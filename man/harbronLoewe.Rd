@@ -9,7 +9,7 @@ harbronLoewe(
   parmInput,
   asymptotes = 2,
   startvalues = NULL,
-  newtonRaphson,
+  newtonRaphson = FALSE,
   ...
 )
 }

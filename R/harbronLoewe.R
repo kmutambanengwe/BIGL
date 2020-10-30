@@ -31,7 +31,7 @@ doseRatioGr = function(response, d, h, b, m, expe, lower, upper){
 #'
 #' @inheritParams generalizedLoewe
 harbronLoewe <- function (doseInput, parmInput, asymptotes = 2,
-                          startvalues = NULL, newtonRaphson, ...) {
+                          startvalues = NULL, newtonRaphson = FALSE, ...) {
   parmInput[c("h1", "h2")] = abs(parmInput[c("h1", "h2")])
   ## In case of a single asymptote, use an artificial one for the second drug
   ## equal to the first one.

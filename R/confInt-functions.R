@@ -1,3 +1,5 @@
+globalVariables("rowname")
+
 #' Summary of confidence intervals object
 #'
 #' @param object Output from \code{\link{bootConfInt}}
@@ -46,31 +48,63 @@ print.summary.BIGLconfInt <- function(x, ...) {
 #' Plot confidence intervals in a contour plot
 #'
 #' @param x off axis confidence intervals, a data frame
+#' @param color analysis with which to colour cells, either \code{effect-size} or \code{maxR}
+#' @param showAll show all intervals in the plot or only significant ones, logical defaulting to \code{TRUE}
 #' @param ... additional arguments, currently ignored
 #' @importFrom stats setNames
+#' @importFrom dplyr rename mutate
+#' @importFrom tibble rownames_to_column
 #' @export
 #' @note written after the contour() function in the \code{drugCombo} package
-plot.BIGLconfInt <- function(x, ...) {
-        x = x$offAxis
+plot.BIGLconfInt <- function(x, color = "effect-size", showAll = TRUE, ...) {
+	
+	if("maxR" %in% names(x)){
+		synOut <- x$maxR$Ymean %>% 
+				rename(synCall = call)
+		effectOut <-  x$confInt$offAxis %>% 
+				rename(effectCall = call) %>% 
+				rownames_to_column(var = "rowname") %>% 
+				mutate(d1 = as.numeric(gsub("(.+)_.+", "\\1", rowname)), 
+						d2 = as.numeric(gsub(".+_(.+)", "\\1", rowname)))
+		x <- merge(synOut, effectOut, by = c("d1","d2"))
+	} else {
+		x = x$offAxis %>% 
+				rename(effectCall = call) 
+		#show doses on equidistant grid
+		d1d2 = rownames(x)
+		d1d2split = sapply(d1d2, function(y) strsplit(y, split = "_")[[1]])
+		x$d1 <- as.numeric(d1d2split[1,])
+		x$d2 <- as.numeric(d1d2split[2,])
+	}
+	
+
+
         # prepare fill legend
         synCalls <- c("additive", "antagonism", "synergy")
-        x$synLabel <- factor(x$call, labels = synCalls, levels = c("Add", "Ant", "Syn"))
-
+		
+		if(color == "effect-size"){
+			x$synLabel <- factor(x$effectCall, labels = synCalls, levels = c("None", "Ant", "Syn"))
+		} else {
+			x$synLabel <- factor(x$synCall, labels = synCalls, levels = c("None", "Ant", "Syn"))
+		}
+        
         legendColors <- c("white", "pink", "lightblue")
         names(legendColors) = synCalls
         # subset to only the colors that are present in the data
         legendColors <- legendColors[names(legendColors) %in% as.character(unique(x$synLabel))]
 
         # text to show
-        x$label <- sprintf("%.2f\n(%.2f, %.2f)", x$estimate, x$lower, x$upper)
+        
+		if(showAll == TRUE){
+			x$label <- sprintf("%.2f\n(%.2f, %.2f)", x$estimate, x$lower, x$upper)
+		} else {
+			x$label <- ifelse(x$synLabel != "additive",
+					sprintf("%.2f\n(%.2f, %.2f)", x$estimate, x$lower, x$upper),
+					"")
+		}
 
-        # show doses on equidistant grid
-        d1d2 = rownames(x)
-        d1d2split = sapply(d1d2, function(y) strsplit(y, split = "_")[[1]])
-        x$d1 <- as.numeric(d1d2split[1,])
         x$d1 = factor(x$d1, levels = sort(unique(x$d1)),
                       labels = sort(unique(x$d1)), ordered = TRUE)
-        x$d2 <- as.numeric(d1d2split[2,])
         x$d2 = factor(x$d2, levels = sort(unique(x$d2)),
                       labels = sort(unique(x$d2)), ordered = TRUE)
 
@@ -104,5 +138,7 @@ plot.BIGLconfInt <- function(x, ...) {
 #' @param ... passed on to \code{\link{plot.BIGLconfInt}}
 #' @export
 plotConfInt <- function(BIGLobj, ...) {
-    plot(BIGLobj$confInt, ...)
+	newBIGLobj <- BIGLobj
+	class(newBIGLobj) <- ("BIGLconfInt")
+    plot(newBIGLobj, ...)
 }

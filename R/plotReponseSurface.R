@@ -125,6 +125,8 @@ plotResponseSurface <- function(data, fitResult = NULL,
     if (!is.null(transforms)) {
       predSurface <- with(transforms,
                           InvPowerT(respSurface, compositeArgs))
+    } else {
+      predSurface <- respSurface
     }
     zGrid <- predSurface
   }
@@ -174,21 +176,33 @@ plotResponseSurface <- function(data, fitResult = NULL,
   ## color.
   surfaceColors <- colorRampPalette(colorPalette)(length(breaks) - 1)
 
+  getFF = function(response){
+    if(is.numeric(response)) {
+      cut(response, breaks = breaks, include.lowest = TRUE)
+    } else if(is.factor(response)){
+      response
+    } else if(is.character(response)){
+      factor(response, levels = c("Syn", "None", "Ant"),
+             labels = c("Syn", "None", "Ant"),
+             ordered = TRUE)
+    }
+  }
   surfaceColor <- function(response) {
-    ff <- cut(response, breaks = breaks, include.lowest = TRUE)
+    ff <- getFF(response)
     zcol <- surfaceColors[ff]
     return(zcol)
   }
 
   getLabels <- function(response) {
-    ff <- cut(response, breaks = breaks, include.lowest = TRUE)
+    ff <- getFF(response)
     labels <- gsub(",", ", ", levels(ff))
     return(labels)
   }
 
   ## Generate colors for the surface plot
   if (colorBy == "asis") {
-    colorVec[is.na(colorVec)] <- 0
+    if(is.numeric(colorVec))
+      colorVec[is.na(colorVec)] <- 0
     zcol <- surfaceColor(colorVec)
     labels <- getLabels(colorVec)
 
